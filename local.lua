@@ -38,35 +38,33 @@ end
 
 local function applyChams()
     while true do
-		wait(1)
-		if ESP_SETTINGS.playerChams then
-			for _, player in pairs(game.Players:GetPlayers()) do
-				if player then
-					if player.Character then
-						if ESP_SETTINGS.Teamcheck and player.Team == game.Players.LocalPlayer.Team then
-							continue
-						end
-						
-						for _, part in pairs(player.Character:GetChildren()) do
-				                        if not part:FindFirstChild("BoxHandleAdornment") then
-				                		createBoxHandleAdornment(part)
-				                        end
-						end
-					end
-				end
-			end
-		else
-			for _, player in pairs(game.Players:GetPlayers()) do
-				if player then
-					if player.Character then
-						for _, part in pairs(player.Character:GetChildren()) do
-							destroyBoxHandleAdornment(part)
-						end
-					end
-				end
-			end
-		end
-	end
+        wait(1)
+        if ESP_SETTINGS.playerChams then
+            for _, playerModel in pairs(workspace.Players:GetChildren()) do
+                local player = game.Players:GetPlayerFromCharacter(playerModel)
+                if player and playerModel then
+                    if ESP_SETTINGS.Teamcheck and player.Team == game.Players.LocalPlayer.Team then
+                        continue
+                    end
+                    
+                    for _, part in pairs(playerModel:GetChildren()) do
+                        if not part:FindFirstChild("BoxHandleAdornment") then
+                            createBoxHandleAdornment(part)
+                        end
+                    end
+                end
+            end
+        else
+            for _, playerModel in pairs(workspace.Players:GetChildren()) do
+                local player = game.Players:GetPlayerFromCharacter(playerModel)
+                if player and playerModel then
+                    for _, part in pairs(playerModel:GetChildren()) do
+                        destroyBoxHandleAdornment(part)
+                    end
+                end
+            end
+        end
+    end
 end
 
 coroutine.wrap(applyChams)()
