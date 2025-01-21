@@ -1,410 +1,489 @@
--- esp.lua
---// Variables
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.women8235
-local camera = workspace.CurrentCamera
-local cache = {}
-
-local bones = {
-    {"Head", "UpperTorso"},
-    {"UpperTorso", "RightUpperArm"},
-    {"RightUpperArm", "RightLowerArm"},
-    {"RightLowerArm", "RightHand"},
-    {"UpperTorso", "LeftUpperArm"},
-    {"LeftUpperArm", "LeftLowerArm"},
-    {"LeftLowerArm", "LeftHand"},
-    {"UpperTorso", "LowerTorso"},
-    {"LowerTorso", "LeftUpperLeg"},
-    {"LeftUpperLeg", "LeftLowerLeg"},
-    {"LeftLowerLeg", "LeftFoot"},
-    {"LowerTorso", "RightUpperLeg"},
-    {"RightUpperLeg", "RightLowerLeg"},
-    {"RightLowerLeg", "RightFoot"}
-}
-
---// Settings
 local ESP_SETTINGS = {
-    BoxOutlineColor = Color3.new(0, 0, 0),
-    BoxColor = Color3.new(1, 1, 1),
-    NameColor = Color3.new(1, 1, 1),
-    HealthOutlineColor = Color3.new(0, 0, 0),
-    HealthHighColor = Color3.new(0, 1, 0),
-    HealthLowColor = Color3.new(1, 0, 0),
-    CharSize = Vector2.new(4, 6),
+    ChamsColor = Color3.fromRGB(255, 152, 220),
     Teamcheck = false,
-    WallCheck = false,
-    Enabled = true,
-    ShowBox = true,
-    BoxType = "2D",
-    ShowName = true,
-    ShowHealth = false,
-    ShowDistance = false,
-    ShowSkeletons = true,
-    ShowTracer = false,
-    TracerColor = Color3.new(1, 1, 1), 
-    TracerThickness = 2,
-    SkeletonsColor = Color3.new(1, 1, 1),
-    TracerPosition = "Bottom",
+    playerChams = false,
+    glowChamsEnabled = false,
+    boxEspEnabled = false,
 }
 
-local function create(class, properties)
-    local drawing = Drawing.new(class)
-    for property, value in pairs(properties) do
-        drawing[property] = value
-    end
-    return drawing
+local function isValidSurface(part)
+    return part:IsA("BasePart") and
+           part.Name ~= "HumanoidRootPart" and
+           part.Parent ~= game.Players.LocalPlayer.Character
 end
 
-local function createEsp(player)
-    local esp = {
-        tracer = create("Line", {
-            Thickness = ESP_SETTINGS.TracerThickness,
-            Color = ESP_SETTINGS.TracerColor,
-            Transparency = 0.5
-        }),
-        boxOutline = create("Square", {
-            Color = ESP_SETTINGS.BoxOutlineColor,
-            Thickness = 3,
-            Filled = false
-        }),
-        box = create("Square", {
-            Color = ESP_SETTINGS.BoxColor,
-            Thickness = 1,
-            Filled = false
-        }),
-        name = create("Text", {
-            Color = ESP_SETTINGS.NameColor,
-            Outline = true,
-            Center = true,
-            Size = 13
-        }),
-        healthOutline = create("Line", {
-            Thickness = 3,
-            Color = ESP_SETTINGS.HealthOutlineColor
-        }),
-        health = create("Line", {
-            Thickness = 1
-        }),
-        distance = create("Text", {
-            Color = Color3.new(1, 1, 1),
-            Size = 12,
-            Outline = true,
-            Center = true
-        }),
-        tracer = create("Line", {
-            Thickness = ESP_SETTINGS.TracerThickness,
-            Color = ESP_SETTINGS.TracerColor,
-            Transparency = 1
-        }),
-        boxLines = {},
-    }
+local function destroyBoxHandleAdornment(part)
+	if not isValidSurface(part) then
+		return
+	end
 
-    cache[player] = esp
-    cache[player]["skeletonlines"] = {}
+	if part:FindFirstChild("BoxHandleAdornment") and part:FindFirstChild("BoxHandleAdornment").Name ~= "InvisGlowChams" and part:FindFirstChild("BoxHandleAdornment").Name ~= "GlowChams" then
+		part.BoxHandleAdornment:Destroy()
+	end
 end
 
-local function isPlayerBehindWall(player)
-    local character = player.Character
-    if not character then
-        return false
+local function createBoxHandleAdornment(part)
+    if not isValidSurface(part) then
+        return
     end
 
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then
-        return false
-    end
-
-    local ray = Ray.new(camera.CFrame.Position, (rootPart.Position - camera.CFrame.Position).Unit * (rootPart.Position - camera.CFrame.Position).Magnitude)
-    local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, {localPlayer.Character, character})
-    
-    return hit and hit:IsA("Part")
+    local boxHandleAdornment = Instance.new("BoxHandleAdornment")
+    boxHandleAdornment.Size = part.Size + Vector3.new(0.01, 0.01, 0.01)
+    boxHandleAdornment.Color3 = ESP_SETTINGS.ChamsColor
+    boxHandleAdornment.AlwaysOnTop = true
+    boxHandleAdornment.Adornee = part
+    boxHandleAdornment.ZIndex = 10
+    boxHandleAdornment.Parent = part
 end
 
-local function removeEsp(player)
-    local esp = cache[player]
-    if not esp then return end
-
-    for _, drawing in pairs(esp) do
-        drawing:Remove()
-    end
-
-    cache[player] = nil
+local function applyChams()
+    while true do
+		wait(1)
+		if ESP_SETTINGS.playerChams then
+			for _, player in pairs(game.Players:GetPlayers()) do
+				if player then
+					if player.Character then
+						if ESP_SETTINGS.Teamcheck and player.Team == game.Players.LocalPlayer.Team then
+							continue
+						end
+						
+						for _, part in pairs(player.Character:GetChildren()) do
+				                        if not part:FindFirstChild("BoxHandleAdornment") then
+				                		createBoxHandleAdornment(part)
+				                        end
+						end
+					end
+				end
+			end
+		else
+			for _, player in pairs(game.Players:GetPlayers()) do
+				if player then
+					if player.Character then
+						for _, part in pairs(player.Character:GetChildren()) do
+							destroyBoxHandleAdornment(part)
+						end
+					end
+				end
+			end
+		end
+	end
 end
 
-local function updateEsp()
-    for player, esp in pairs(cache) do
-        local character, team = player.Character, player.Team
-        if character and (not ESP_SETTINGS.Teamcheck or (team and team ~= localPlayer.Team)) then
-            local rootPart = character:FindFirstChild("HumanoidRootPart")
-            local head = character:FindFirstChild("Head")
-            local humanoid = character:FindFirstChild("Humanoid")
-            local isBehindWall = ESP_SETTINGS.WallCheck and isPlayerBehindWall(player)
-            local shouldShow = not isBehindWall and ESP_SETTINGS.Enabled
-            if rootPart and head and humanoid and shouldShow then
-                local position, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-                if onScreen then
-                    local hrp2D = camera:WorldToViewportPoint(rootPart.Position)
-                    local charSize = (camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0)).Y - camera:WorldToViewportPoint(rootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2
-                    local boxSize = Vector2.new(math.floor(charSize * 1.8), math.floor(charSize * 1.9))
-                    local boxPosition = Vector2.new(math.floor(hrp2D.X - charSize * 1.8 / 2), math.floor(hrp2D.Y - charSize * 1.6 / 2))
+coroutine.wrap(applyChams)()
 
-                    if ESP_SETTINGS.ShowName and ESP_SETTINGS.Enabled then
-                        esp.name.Visible = true
-                        esp.name.Text = string.lower(player.Name)
-                        esp.name.Position = Vector2.new(boxSize.X / 2 + boxPosition.X, boxPosition.Y - 16)
-                        esp.name.Color = ESP_SETTINGS.NameColor
-                    else
-                        esp.name.Visible = false
-                    end
-
-                    if ESP_SETTINGS.ShowBox and ESP_SETTINGS.Enabled then
-                        if ESP_SETTINGS.BoxType == "2D" then
-                            esp.boxOutline.Size = boxSize
-                            esp.boxOutline.Position = boxPosition
-                            esp.box.Size = boxSize
-                            esp.box.Position = boxPosition
-                            esp.box.Color = ESP_SETTINGS.BoxColor
-                            esp.box.Visible = true
-                            esp.boxOutline.Visible = true
-                            for _, line in ipairs(esp.boxLines) do
-                                line:Remove()
-                            end
-                        elseif ESP_SETTINGS.BoxType == "Corner Box Esp" then
-                            local lineW = (boxSize.X / 5)
-                            local lineH = (boxSize.Y / 6)
-                            local lineT = 1
-    
-                            if #esp.boxLines == 0 then
-                                for i = 1, 16 do
-                                    local boxLine = create("Line", {
-                                        Thickness = 1,
-                                        Color = ESP_SETTINGS.BoxColor,
-                                        Transparency = 1
-                                    })
-                                    esp.boxLines[#esp.boxLines + 1] = boxLine
-                                end
-                            end
-    
-                            local boxLines = esp.boxLines
-    
-                            -- top left
-                            boxLines[1].From = Vector2.new(boxPosition.X - lineT, boxPosition.Y - lineT)
-                            boxLines[1].To = Vector2.new(boxPosition.X + lineW, boxPosition.Y - lineT)
-    
-                            boxLines[2].From = Vector2.new(boxPosition.X - lineT, boxPosition.Y - lineT)
-                            boxLines[2].To = Vector2.new(boxPosition.X - lineT, boxPosition.Y + lineH)
-    
-                            -- top right
-                            boxLines[3].From = Vector2.new(boxPosition.X + boxSize.X - lineW, boxPosition.Y - lineT)
-                            boxLines[3].To = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y - lineT)
-    
-                            boxLines[4].From = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y - lineT)
-                            boxLines[4].To = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y + lineH)
-    
-                            -- bottom left
-                            boxLines[5].From = Vector2.new(boxPosition.X - lineT, boxPosition.Y + boxSize.Y - lineH)
-                            boxLines[5].To = Vector2.new(boxPosition.X - lineT, boxPosition.Y + boxSize.Y + lineT)
-    
-                            boxLines[6].From = Vector2.new(boxPosition.X - lineT, boxPosition.Y + boxSize.Y + lineT)
-                            boxLines[6].To = Vector2.new(boxPosition.X + lineW, boxPosition.Y + boxSize.Y + lineT)
-    
-                            -- bottom right
-                            boxLines[7].From = Vector2.new(boxPosition.X + boxSize.X - lineW, boxPosition.Y + boxSize.Y + lineT)
-                            boxLines[7].To = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y + boxSize.Y + lineT)
-    
-                            boxLines[8].From = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y + boxSize.Y - lineH)
-                            boxLines[8].To = Vector2.new(boxPosition.X + boxSize.X + lineT, boxPosition.Y + boxSize.Y + lineT)
-    
-                            -- inline
-                            for i = 9, 16 do
-                                boxLines[i].Thickness = 2
-                                boxLines[i].Color = ESP_SETTINGS.BoxOutlineColor
-                                boxLines[i].Transparency = 1
-                            end
-    
-                            boxLines[9].From = Vector2.new(boxPosition.X, boxPosition.Y)
-                            boxLines[9].To = Vector2.new(boxPosition.X, boxPosition.Y + lineH)
-    
-                            boxLines[10].From = Vector2.new(boxPosition.X, boxPosition.Y)
-                            boxLines[10].To = Vector2.new(boxPosition.X + lineW, boxPosition.Y)
-    
-                            boxLines[11].From = Vector2.new(boxPosition.X + boxSize.X - lineW, boxPosition.Y)
-                            boxLines[11].To = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y)
-    
-                            boxLines[12].From = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y)
-                            boxLines[12].To = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y + lineH)
-    
-                            boxLines[13].From = Vector2.new(boxPosition.X, boxPosition.Y + boxSize.Y - lineH)
-                            boxLines[13].To = Vector2.new(boxPosition.X, boxPosition.Y + boxSize.Y)
-    
-                            boxLines[14].From = Vector2.new(boxPosition.X, boxPosition.Y + boxSize.Y)
-                            boxLines[14].To = Vector2.new(boxPosition.X + lineW, boxPosition.Y + boxSize.Y)
-    
-                            boxLines[15].From = Vector2.new(boxPosition.X + boxSize.X - lineW, boxPosition.Y + boxSize.Y)
-                            boxLines[15].To = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y + boxSize.Y)
-    
-                            boxLines[16].From = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y + boxSize.Y - lineH)
-                            boxLines[16].To = Vector2.new(boxPosition.X + boxSize.X, boxPosition.Y + boxSize.Y)
-    
-                            for _, line in ipairs(boxLines) do
-                                line.Visible = true
-                            end
-                            esp.box.Visible = false
-                            esp.boxOutline.Visible = false
-                        end
-                    else
-                        esp.box.Visible = false
-                        esp.boxOutline.Visible = false
-                        for _, line in ipairs(esp.boxLines) do
-                            line:Remove()
-                        end
-                        esp.boxLines = {}
-                    end
-
-                    if ESP_SETTINGS.ShowHealth and ESP_SETTINGS.Enabled then
-                        esp.healthOutline.Visible = true
-                        esp.health.Visible = true
-                        local healthPercentage = player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth
-                        esp.healthOutline.From = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y)
-                        esp.healthOutline.To = Vector2.new(esp.healthOutline.From.X, esp.healthOutline.From.Y - boxSize.Y)
-                        esp.health.From = Vector2.new((boxPosition.X - 5), boxPosition.Y + boxSize.Y)
-                        esp.health.To = Vector2.new(esp.health.From.X, esp.health.From.Y - (player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth) * boxSize.Y)
-                        esp.health.Color = ESP_SETTINGS.HealthLowColor:Lerp(ESP_SETTINGS.HealthHighColor, healthPercentage)
-                    else
-                        esp.healthOutline.Visible = false
-                        esp.health.Visible = false
-                    end
-
-                    if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
-                        local distance = (camera.CFrame.p - rootPart.Position).Magnitude
-                        esp.distance.Text = string.format("%.1f studs", distance)
-                        esp.distance.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 5)
-                        esp.distance.Visible = true
-                    else
-                        esp.distance.Visible = false
-                    end
-
-                    if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
-                        if #esp["skeletonlines"] == 0 then
-                            for _, bonePair in ipairs(bones) do
-                                local parentBone, childBone = bonePair[1], bonePair[2]
-                                
-                                if player.Character and player.Character[parentBone] and player.Character[childBone] then
-                                    local skeletonLine = create("Line", {
-                                        Thickness = 1,
-                                        Color = ESP_SETTINGS.SkeletonsColor,
-                                        Transparency = 1
-                                    })
-                                    esp["skeletonlines"][#esp["skeletonlines"] + 1] = {skeletonLine, parentBone, childBone}
-                                end
-                            end
-                        end
-                    
-                        for _, lineData in ipairs(esp["skeletonlines"]) do
-                            local skeletonLine = lineData[1]
-                            local parentBone, childBone = lineData[2], lineData[3]
-                    
-                            if player.Character and player.Character[parentBone] and player.Character[childBone] then
-                                local parentPosition = camera:WorldToViewportPoint(player.Character[parentBone].Position)
-                                local childPosition = camera:WorldToViewportPoint(player.Character[childBone].Position)
-                    
-                                skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
-                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
-                                skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
-                                skeletonLine.Visible = true
-                            else
-                                skeletonLine:Remove()
-                            end
-                        end
-                    else
-                        for _, lineData in ipairs(esp["skeletonlines"]) do
-                            local skeletonLine = lineData[1]
-                            skeletonLine:Remove()
-                        end
-                        esp["skeletonlines"] = {}
-                    end                    
-
-                    if ESP_SETTINGS.ShowTracer and ESP_SETTINGS.Enabled then
-                        local tracerY
-                        if ESP_SETTINGS.TracerPosition == "Top" then
-                            tracerY = 0
-                        elseif ESP_SETTINGS.TracerPosition == "Middle" then
-                            tracerY = camera.ViewportSize.Y / 2
-                        else
-                            tracerY = camera.ViewportSize.Y
-                        end
-                        if ESP_SETTINGS.Teamcheck and player.TeamColor == localPlayer.TeamColor then
-                            esp.tracer.Visible = false
-                        else
-                            esp.tracer.Visible = true
-                            esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
-                            esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y)            
-                        end
-                    else
-                        esp.tracer.Visible = false
-                    end
-                else
-                    for _, drawing in pairs(esp) do
-                        drawing.Visible = false
-                    end
-                    for _, lineData in ipairs(esp["skeletonlines"]) do
-                        local skeletonLine = lineData[1]
-                        skeletonLine:Remove()
-                    end
-                    esp["skeletonlines"] = {}
-                    for _, line in ipairs(esp.boxLines) do
-                        line:Remove()
-                    end
-                    esp.boxLines = {}
-                end
-            else
-                for _, drawing in pairs(esp) do
-                    drawing.Visible = false
-                end
-                for _, lineData in ipairs(esp["skeletonlines"]) do
-                    local skeletonLine = lineData[1]
-                    skeletonLine:Remove()
-                end
-                esp["skeletonlines"] = {}
-                for _, line in ipairs(esp.boxLines) do
-                    line:Remove()
-                end
-                esp.boxLines = {}
-            end
-        else
-            for _, drawing in pairs(esp) do
-                drawing.Visible = false
-            end
-            for _, lineData in ipairs(esp["skeletonlines"]) do
-                local skeletonLine = lineData[1]
-                skeletonLine:Remove()
-            end
-            esp["skeletonlines"] = {}
-            for _, line in ipairs(esp.boxLines) do
-                line:Remove()
-            end
-            esp.boxLines = {}
-        end
-    end
+local function addHighlight(model)
+	if model then
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = Color3.fromRGB(239, 21, 255)
+		highlight.FillTransparency = 0.5
+		highlight.OutlineColor = Color3.fromRGB(215, 147, 255)
+		highlight.OutlineTransparency = 0.5
+		highlight.Parent = model
+	end
 end
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= localPlayer then
-        createEsp(player)
-    end
+local function removeHighlight(model)
+	if model then
+		if model:FindFirstChild("Highlight") then
+			model.Highlight:Destroy()
+		end
+	end
 end
 
-Players.PlayerAdded:Connect(function(player)
-    if player ~= localPlayer then
-        createEsp(player)
-    end
-end)
+local function addItemEsp(part, name)
+	if part then
+		local billboard = Instance.new("BillboardGui")
+		billboard.AlwaysOnTop = true
+		billboard.Name = "ItemEsp"
+		billboard.Parent = part
+		billboard.Size = UDim2.new(1, 0, 1, 0)
+		local textLabel = Instance.new("TextLabel")
+		textLabel.BackgroundTransparency = 1
+		textLabel.RichText = true
+		textLabel.TextSize = 8
+		textLabel.TextColor3 = Color3.fromRGB(255, 170, 33)
+		textLabel.Text = part.Name
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.Parent = billboard
 
-Players.PlayerRemoving:Connect(function(player)
-    removeEsp(player)
-end)
+		if name and name ~= nil then
+			textLabel.Text = tostring(name)
+		end
+	end
+end
 
-RunService.RenderStepped:Connect(updateEsp)
+local function removeItemEsp(model)
+	if model then
+		if model:FindFirstChild("ItemEsp") then
+			model.ItemEsp:Destroy()
+		end
+	end
+end
 
-return ESP_SETTINGS
+local function addNpcName(model, name)
+	if model then
+		if model:FindFirstChild("Head") then
+			local billboard = Instance.new("BillboardGui")
+			billboard.AlwaysOnTop = true
+			billboard.StudsOffset = Vector3.new(0, 1.25, 0)
+			billboard.Size = UDim2.new(1, 0, 1, 0)
+			billboard.Name = "NameEsp"
+			billboard.Parent = model.Head
+			local textLabel = Instance.new("TextLabel")
+			textLabel.BackgroundTransparency = 1
+			textLabel.RichText = true
+			textLabel.TextSize = 11
+			textLabel.TextColor3 = Color3.fromRGB(255, 152, 220)
+			textLabel.Font = Enum.Font.SourceSans
+			textLabel.Size = UDim2.new(1, 0, 0.2, 0)
+			textLabel.TextScaled = false
+			textLabel.Parent = billboard
+
+			if name and name ~= nil then
+			     textLabel.Text = name
+			else
+			     textLabel.Text = model.Name
+			end
+
+			if model:FindFirstChild("Humanoid") then
+				model.Humanoid.HealthDisplayDistance = 0
+				model.Humanoid.DisplayDistanceType = "None"
+			end
+		else
+			warn("No Head Part Found For: " .. model.Name)
+		end
+	end
+end
+
+local function removeNpcName(model)
+	if model then
+		if model:FindFirstChild("Head") then
+			if model:FindFirstChild("Head"):FindFirstChild("NameEsp") then
+				model.Head.NameEsp:Destroy()
+			end
+		end
+	end
+end
+
+local function addNpcChams(model)
+	if model then
+		for _, part in pairs(model:GetChildren()) do
+			if isValidSurface(part) and not part:FindFirstChild("BoxHandleAdornment") then
+				createBoxHandleAdornment(part)
+			end
+		end
+	end
+end
+
+local function removeNpcChams(model)
+	if model then
+		for _, part in pairs(model:GetChildren()) do
+			if isValidSurface(part) then
+				if part:FindFirstChild("BoxHandleAdornment") then
+					part.BoxHandleAdornment:Destroy()
+				end
+			end
+		end
+	end
+end
+
+local activeBoxes = {}
+
+local function updateBoxes()
+	while true do
+		wait(0.15)
+		for model, boxes in pairs(activeBoxes) do
+			for _, box in pairs(boxes) do
+				if box and box.Parent and game.Workspace.CurrentCamera then
+					local part = box.Adornee
+					local rayDirection = (part.Position - game.Workspace.CurrentCamera.CFrame.Position).unit * 1000
+
+					local raycastParams = RaycastParams.new()
+					raycastParams.FilterDescendantsInstances = {game.Players.LocalPlayer.Character}
+					raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+					local raycastResult = game.Workspace:Raycast(game.Workspace.CurrentCamera.CFrame.Position, rayDirection, raycastParams)
+
+					if raycastResult and raycastResult.Instance:IsDescendantOf(model) then
+						box.Transparency = 1
+					else
+						box.Transparency = 0
+					end
+				end
+			end
+		end
+	end
+end
+
+local activeGlowChams = {}
+
+local function addGlowChams(model)
+	for _, part in pairs(model:GetChildren()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			local glowPart = Instance.new("Part")
+
+			if part.Name == "Handle" then
+				continue
+			end
+			
+			if part.Name ~= "Head" then
+				glowPart.Size = part.Size * 1.15
+				glowPart.CFrame = part.CFrame
+				glowPart.Transparency = 0.2
+				glowPart.Material = Enum.Material.Neon
+				glowPart.Color = Color3.fromRGB(255, 255, 255)
+				glowPart.Anchored = false
+				glowPart.CanCollide = false
+				glowPart.Name = "GlowCHams"
+				glowPart.Parent = part
+				
+				local outline = Instance.new("BoxHandleAdornment")
+				outline.Size = part.Size
+				outline.Transparency = 0
+				outline.Color3 = Color3.fromRGB(0, 143, 156)
+				outline.Name = "Outline"
+				outline.Parent = part
+				outline.ZIndex = 10
+				outline.Adornee = part
+				outline.AlwaysOnTop = true
+				table.insert(activeGlowChams, glowPart)
+				table.insert(activeGlowChams, outline)
+			end
+
+			if part.Name == "Head" then
+				local outline = Instance.new("CylinderHandleAdornment")
+				outline.Transparency = 0.4
+				outline.Color3 = Color3.fromRGB(0, 143, 156)
+				outline.Name = "Outline"
+				outline.ZIndex = 10
+				outline.Adornee = part
+				outline.AlwaysOnTop = true
+				outline.Height = 1.15
+				outline.CFrame = CFrame.Angles(math.rad(90), 0, 0)
+				outline.Radius = 0.6
+				outline.Parent = part
+				
+				glowPart.Shape = "Cylinder"
+				glowPart.Size = Vector3.new(1.4, 1.4, 1.4)
+				glowPart.CFrame = part.CFrame * CFrame.Angles(math.rad(90), math.rad(90), 0)
+				glowPart.Transparency = 0.2
+				glowPart.Material = Enum.Material.Neon
+				glowPart.Color = Color3.fromRGB(255, 255, 255)
+				glowPart.Anchored = false
+				glowPart.CanCollide = false
+				glowPart.Name = "GlowChams"
+				glowPart.Parent = part
+				table.insert(activeGlowChams, glowPart)
+				table.insert(activeGlowChams, outline)
+			end
+
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = glowPart
+			weld.Part1 = part
+			weld.Parent = glowPart
+			table.insert(activeGlowChams, weld)
+		end
+	end
+end
+
+local function removeGlowChams()
+	for _, part in pairs(activeGlowChams) do
+		if part and part ~= nil then
+			part:Destroy()
+			activeGlowChams[part] = nil
+		end
+	end
+end
+
+local function addVisChams(model)
+	local boxes = {}
+		
+	for _, part in pairs(model:GetDescendants()) do
+		if model == game.Players.LocalPlayer.Character then
+			continue
+		end
+	
+		if part:IsA("Accessory") then
+			part:Destroy()
+			continue
+		end
+			
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			local glowPart = Instance.new("Part")
+	
+			if part.Name == "Handle" then
+				continue
+			end
+	
+			glowPart.Size = part.Size * 1.05
+			glowPart.CFrame = part.CFrame
+			glowPart.Transparency = 0.2
+			glowPart.Material = Enum.Material.Neon
+			glowPart.Color = Color3.fromRGB(255, 152, 22)
+			glowPart.Anchored = false
+			glowPart.CanCollide = false
+			glowPart.Name = "GlowChams"
+			glowPart.Parent = model
+	
+			if part.Name == "Head" then
+				glowPart.Shape = "Ball"
+				glowPart.Size = Vector3.new(1.5, 1.5, 1.5)
+			end
+	
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = glowPart
+			weld.Part1 = part
+			weld.Parent = glowPart
+	
+			local box = Instance.new("BoxHandleAdornment")
+			box.ZIndex = 10
+			box.AlwaysOnTop = true
+			box.Color3 = Color3.fromRGB(7, 255, 3)
+			box.Size = part.Size
+			box.Adornee = part
+			box.Name = "InvisGlowChams"
+			box.Parent = part
+	
+			table.insert(boxes, box)
+		end
+	end
+
+	activeBoxes[model] = boxes
+end
+
+local function removeVisChams()
+	for model, boxes in pairs(activeBoxes) do
+		for _, box in pairs(boxes) do
+			if box then
+				box:Destroy()
+			end
+		end
+		activeBoxes[model] = nil
+
+		for _, part in pairs(model:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name == "GlowChams" then
+				part:Destroy()
+			end
+		end
+	end
+end
+
+coroutine.wrap(updateBoxes)()
+
+local function addPointLight(model)
+	if model.PrimaryPart then
+		local pointlight = Instance.new("PointLight")
+		pointlight.Brightness = 8
+		pointlight.Color = Color3.fromRGB(8, 255, 234)
+		pointlight.Parent = model.PrimaryPart
+	end
+end
+
+local espBillboards = {}
+
+local function destroyBoxESP()
+	for _, billboard in pairs(espBillboards) do
+		billboard:Destroy()
+	end
+	espBillboards = {}
+end
+
+local function createBillboardGui(rootPart)
+	local camera = game.Workspace.CurrentCamera
+	local hrp2D = camera:WorldToViewportPoint(rootPart.Position)
+	local distance = (camera.CFrame.Position - rootPart.Position).magnitude
+
+	local scale = math.clamp(distance / 200, 1, 2)
+
+	local charSize = (camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0)).Y - camera:WorldToViewportPoint(rootPart.Position + Vector3.new(0, 2.6, 0)).Y)
+	local boxSize = Vector2.new(math.floor(charSize * scale), math.floor(charSize * scale * 1.1))
+
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Adornee = rootPart
+	billboardGui.Size = UDim2.new(0, boxSize.X, 0, boxSize.Y)
+	billboardGui.StudsOffset = Vector3.new(0, -0.5, 0)
+	billboardGui.AlwaysOnTop = true
+	billboardGui.Parent = rootPart
+
+	local function createLine(position, size, color)
+		local frame = Instance.new("Frame")
+		frame.Position = position
+		frame.Size = size
+		frame.BackgroundColor3 = color
+		frame.BorderSizePixel = 0
+		frame.Parent = billboardGui
+		return frame
+	end
+
+	local cornerColor = Color3.new(1, 1, 1)
+	local lineLength = math.max(boxSize.X / 5, 5)
+	local lineThickness = math.max(boxSize.Y / 25, 1)
+
+	createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, lineLength, 0, lineThickness), cornerColor)
+	createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, lineThickness, 0, lineLength), cornerColor)
+
+	createLine(UDim2.new(1, -lineLength, 0, 0), UDim2.new(0, lineLength, 0, lineThickness), cornerColor)
+	createLine(UDim2.new(1, -lineThickness, 0, 0), UDim2.new(0, lineThickness, 0, lineLength), cornerColor)
+
+	createLine(UDim2.new(0, 0, 1, -lineThickness), UDim2.new(0, lineLength, 0, lineThickness), cornerColor)
+	createLine(UDim2.new(0, 0, 1, -lineLength), UDim2.new(0, lineThickness, 0, lineLength), cornerColor)
+
+	createLine(UDim2.new(1, -lineLength, 1, -lineThickness), UDim2.new(0, lineLength, 0, lineThickness), cornerColor)
+	createLine(UDim2.new(1, -lineThickness, 1, -lineLength), UDim2.new(0, lineThickness, 0, lineLength), cornerColor)
+
+	table.insert(espBillboards, billboardGui)
+end
+
+local cornerBoxes = {}
+
+local function addCornerBox(model)
+	table.insert(cornerBoxes, model)
+end
+
+local function applyBoxESP()
+	while true do
+		wait()
+		destroyBoxESP()
+		if boxEspEnabled then
+			for _, enemy in pairs(enemyteam:GetChildren()) do
+				if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") then
+					createBillboardGui(enemy.HumanoidRootPart)
+				end
+			end
+		end
+	end
+end
+
+coroutine.wrap(applyBoxESP)()
+
+local function applyCornersToModels()
+	destroyBoxESP()
+	
+	if ESP_SETTINGS.boxEspEnabled then
+		for _, enemy in pairs(cornerBoxes) do
+			if enemy and enemy ~= nil and enemy:IsA("Model") and enemy.PrimaryPart then
+				createBillboardGui(enemy.PrimaryPart)
+			end
+		end
+	end
+end
+
+game:GetService("RunService").Heartbeat:Connect(applyCornersToModels)
+
+return {
+	ESP_SETTINGS = ESP_SETTINGS,
+	addHighlight = addHighlight,
+	removeHighlight = removeHighlight,
+	addItemEsp = addItemEsp,
+	removeItemEsp = removeItemEsp,
+	addNpcChams = addNpcChams,
+	removeNpcChams = removeNpcChams,
+	addNpcName = addNpcName,
+	removeNpcName = removeNpcName,
+	addGlowChams = addGlowChams,
+	removeGlowChams = removeGlowChams,
+	addVisChams = addVisChams,
+	removeVisChams = removeVisChams,
+	addPointLight = addPointLight,
+	addCornerBox = addCornerBox,
+}
